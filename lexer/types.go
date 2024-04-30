@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"fmt"
+
 	"github.com/ohayouarmaan/proton/helpers"
 )
 
@@ -12,6 +14,7 @@ const (
 	Integer TokenType = "int"
 	Return  TokenType = "return"
 
+	Identifier TokenType = "identifier"
 	// Scope Identifiers
 	LParen    TokenType = "("
 	RParen    TokenType = ")"
@@ -41,12 +44,21 @@ const (
 	BitWiseNotUnary TokenType = "~"
 	Pointer         TokenType = "&"
 
+	Dot TokenType = "."
+
 	EOF TokenType = "EOF"
 )
+
+var KEYWORDS map[string]TokenType = map[string]TokenType{
+	"proc":   Process,
+	"int":    Integer,
+	"return": Return,
+}
 
 type Token struct {
 	TokenType TokenType
 	Lexeme    string
+	meta_data any
 	start     int
 	end       int
 }
@@ -65,12 +77,47 @@ func New(source_code string) Lexer {
 	}
 }
 
-func (l *Lexer) build_string() Token {
+func getKeywordToken(lexeme string) TokenType {
+	if KEYWORDS[lexeme] != "" {
+		return KEYWORDS[lexeme]
+
+	}
+	return Identifier
+}
+
+func (l *Lexer) build_keyword() Token {
 	built_string := ""
 	start := l.Current_Idx
 	for helpers.IsAlphaNumeric(string(l.Source_Code[l.Current_Idx])) {
 		built_string += string(l.Source_Code[l.Current_Idx])
 		l.Current_Idx += 1
+	}
+	tt := getKeywordToken(built_string)
+	return Token{
+		TokenType: tt,
+		start:     start,
+		Lexeme:    built_string,
+		end:       l.Current_Idx,
+	}
+}
+
+func (l *Lexer) build_string() Token {
+	l.Current_Idx += 1
+	built_string := ""
+	start := l.Current_Idx
+	for {
+		if l.Current_Idx >= len(l.Source_Code) {
+			break
+		}
+		if string(l.Source_Code[l.Current_Idx]) == "\\" {
+			built_string += string(l.Source_Code[l.Current_Idx+1])
+			l.Current_Idx += 1
+		}
+		built_string += string(l.Source_Code[l.Current_Idx])
+		l.Current_Idx += 1
+		if string(l.Source_Code[l.Current_Idx]) == string('"') {
+			break
+		}
 	}
 	return Token{
 		TokenType: Str,
@@ -96,10 +143,8 @@ func (l *Lexer) build_numbers() Token {
 	start := l.Current_Idx
 	current_character := string(l.Source_Code[l.Current_Idx])
 	for (current_character > "0" && current_character < "9") || (current_character == ".") {
-		if dot_count > 0 {
-			if current_character == "." {
-				break
-			}
+		if current_character == "." && dot_count > 0 {
+			break
 		}
 		if current_character == "." {
 			dot_count += 1
@@ -139,8 +184,13 @@ func (l *Lexer) Generate_Tokens() {
 			l.Tokens = append(l.Tokens, l.build_numbers())
 		} else if current_character == ";" {
 			l.build_token(SemiColon, ";")
-		} else {
+		} else if current_character == "." {
+			l.build_token(Dot, ".")
+		} else if current_character == "\"" {
 			l.Tokens = append(l.Tokens, l.build_string())
+			l.Current_Idx += 1
+		} else {
+			l.Tokens = append(l.Tokens, l.build_keyword())
 		}
 	}
 	l.Tokens = append(l.Tokens, Token{
@@ -149,4 +199,5 @@ func (l *Lexer) Generate_Tokens() {
 		end:       len(l.Source_Code),
 		Lexeme:    "EOF",
 	})
+	fmt.Println(l.Tokens)
 }
