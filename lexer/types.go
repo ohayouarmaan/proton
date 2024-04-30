@@ -3,9 +3,10 @@ package lexer
 type TokenType string
 
 const (
-	Process   TokenType = "proc"
-	Integer   TokenType = "int"
-	LParen    TokenType = "("
+	Process TokenType = "proc"
+	Integer TokenType = "int"
+	LParen  TokenType = "("
+
 	RParen    TokenType = ")"
 	Return    TokenType = "return"
 	SemiColon TokenType = ";"
