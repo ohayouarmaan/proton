@@ -2,9 +2,11 @@ package runner
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/ohayouarmaan/proton/lexer"
+	"github.com/ohayouarmaan/proton/parser"
 )
 
 type Runner struct {
@@ -22,5 +24,10 @@ func (r *Runner) Load_program(file_name string) error {
 	r.Code = string(file)
 	lexer := lexer.New(r.Code)
 	lexer.Generate_Tokens()
+	p := parser.Parser{
+		Tokens:      lexer.Tokens,
+		Current_Idx: 0,
+	}
+	fmt.Println("parsed: ", p.Parse_binop())
 	return nil
 }

@@ -2,17 +2,27 @@ package lexer
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/ohayouarmaan/proton/helpers"
 )
 
 type TokenType string
 
+type Literal_Value struct {
+	Value interface{}
+	Type  string
+}
+
 const (
 	// Reserved Keywords
 	Process TokenType = "proc"
 	Integer TokenType = "int"
+	String  TokenType = "string"
+	Boolean TokenType = "bool"
 	Return  TokenType = "return"
+	True    TokenType = "true"
+	False   TokenType = "false"
 
 	Identifier TokenType = "identifier"
 	// Scope Identifiers
@@ -58,9 +68,11 @@ var KEYWORDS map[string]TokenType = map[string]TokenType{
 type Token struct {
 	TokenType TokenType
 	Lexeme    string
-	meta_data any
-	start     int
-	end       int
+	Meta_data *struct {
+		Value Literal_Value
+	}
+	start int
+	end   int
 }
 
 type Lexer struct {
@@ -96,6 +108,7 @@ func (l *Lexer) build_keyword() Token {
 	return Token{
 		TokenType: tt,
 		start:     start,
+		Meta_data: nil,
 		Lexeme:    built_string,
 		end:       l.Current_Idx,
 	}
@@ -123,7 +136,10 @@ func (l *Lexer) build_string() Token {
 		TokenType: Str,
 		start:     start,
 		Lexeme:    built_string,
-		end:       l.Current_Idx,
+		Meta_data: &struct{ Value Literal_Value }{
+			Value: Literal_Value{Value: built_string, Type: "string"},
+		},
+		end: l.Current_Idx,
 	}
 }
 
@@ -132,6 +148,7 @@ func (l *Lexer) build_token(t TokenType, lexeme string) {
 		TokenType: t,
 		Lexeme:    lexeme,
 		start:     l.Current_Idx,
+		Meta_data: nil,
 		end:       l.Current_Idx + 1,
 	})
 	l.Current_Idx += 1
@@ -142,7 +159,7 @@ func (l *Lexer) build_numbers() Token {
 	dot_count := 0
 	start := l.Current_Idx
 	current_character := string(l.Source_Code[l.Current_Idx])
-	for (current_character > "0" && current_character < "9") || (current_character == ".") {
+	for ((current_character > "0" && current_character < "9") || (current_character == ".")) && l.Current_Idx < len(l.Source_Code) {
 		if current_character == "." && dot_count > 0 {
 			break
 		}
@@ -151,14 +168,23 @@ func (l *Lexer) build_numbers() Token {
 		}
 		built_number += current_character
 		l.Current_Idx += 1
+		if l.Current_Idx >= len(l.Source_Code) {
+			break
+		}
 		current_character = string(l.Source_Code[l.Current_Idx])
 	}
-	return Token{
-		TokenType: Num,
-		start:     start,
-		Lexeme:    built_number,
-		end:       l.Current_Idx,
+	if value, err := strconv.ParseFloat(built_number, 64); err == nil {
+		return Token{
+			TokenType: Num,
+			start:     start,
+			Lexeme:    built_number,
+			Meta_data: &struct{ Value Literal_Value }{
+				Value: Literal_Value{Value: value, Type: "number"},
+			},
+			end: l.Current_Idx,
+		}
 	}
+	panic("illegal float value found.")
 }
 
 func (l *Lexer) Generate_Tokens() {
@@ -180,15 +206,29 @@ func (l *Lexer) Generate_Tokens() {
 			l.build_token(LBrace, "{")
 		} else if current_character == "}" {
 			l.build_token(RBrace, "}")
-		} else if current_character > "0" && current_character < "9" {
-			l.Tokens = append(l.Tokens, l.build_numbers())
 		} else if current_character == ";" {
 			l.build_token(SemiColon, ";")
 		} else if current_character == "." {
 			l.build_token(Dot, ".")
+
+		} else if current_character == "+" {
+			l.build_token(Plus, "+")
+		} else if current_character == "-" {
+			l.build_token(Minus, "-")
+		} else if current_character == "*" {
+			l.build_token(Multiply, "*")
+		} else if current_character == "/" {
+			l.build_token(Divide, "/")
+		} else if current_character == "!" {
+			l.build_token(NotUnary, "!")
+		} else if current_character == "~" {
+			l.build_token(BitWiseNotUnary, "~")
+
 		} else if current_character == "\"" {
 			l.Tokens = append(l.Tokens, l.build_string())
 			l.Current_Idx += 1
+		} else if current_character > "0" && current_character < "9" {
+			l.Tokens = append(l.Tokens, l.build_numbers())
 		} else {
 			l.Tokens = append(l.Tokens, l.build_keyword())
 		}
@@ -197,6 +237,7 @@ func (l *Lexer) Generate_Tokens() {
 		TokenType: EOF,
 		start:     len(l.Source_Code) - 1,
 		end:       len(l.Source_Code),
+		Meta_data: nil,
 		Lexeme:    "EOF",
 	})
 	fmt.Println(l.Tokens)
