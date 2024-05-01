@@ -5,6 +5,9 @@
 package parser
 
 import (
+	"fmt"
+	"slices"
+
 	"github.com/ohayouarmaan/proton/lexer"
 )
 
@@ -16,6 +19,17 @@ type Parser struct {
 type Expression struct {
 	Value interface{}
 	Type  string
+}
+
+type Statement struct {
+	Value interface{}
+	Type  string
+}
+
+type VarDeclarationStatement struct {
+	Name  string
+	Type  lexer.TokenType
+	Value Expression
 }
 
 type BinaryOp struct {
@@ -36,6 +50,62 @@ func (p *Parser) Parse() Expression {
 		}
 	}
 	return Expression{}
+}
+
+func (p *Parser) ParseProgram() []Statement {
+	stmts := []Statement{}
+	for p.Tokens[p.Current_Idx].TokenType != lexer.EOF {
+		stmt := *p.parse_stmt()
+		stmts = append(stmts, stmt)
+	}
+	return stmts
+}
+
+func (p *Parser) parse_stmt() *Statement {
+	if p.Tokens[p.Current_Idx].TokenType == lexer.Dec {
+		p.Current_Idx += 1
+		return p.parse_var_dec_stmt()
+	} else {
+		fmt.Println("A var declaration must have a dec keyword.")
+	}
+	return nil
+}
+
+func (p *Parser) parse_var_dec_stmt() *Statement {
+	if p.Tokens[p.Current_Idx].TokenType == lexer.Identifier {
+		new_var_name := p.Tokens[p.Current_Idx].Lexeme
+		p.Current_Idx += 1
+		fmt.Println(p.Tokens[p.Current_Idx].TokenType)
+		if x := ([]lexer.TokenType{lexer.Integer, lexer.String}); slices.Contains(x, p.Tokens[p.Current_Idx].TokenType) {
+			new_var_type := p.Tokens[p.Current_Idx]
+			p.Current_Idx += 1
+			if p.Tokens[p.Current_Idx].TokenType == lexer.EqualTo {
+				p.Current_Idx += 1
+				value := p.Parse_binop()
+				if p.Tokens[p.Current_Idx].TokenType == lexer.SemiColon {
+					p.Current_Idx += 1
+					generated_stmt := Statement{
+						Value: VarDeclarationStatement{
+							Name:  new_var_name,
+							Type:  new_var_type.TokenType,
+							Value: value,
+						},
+						Type: "VarDec",
+					}
+					return &generated_stmt
+				} else {
+					fmt.Println("Missing ';'")
+				}
+			} else {
+				fmt.Println("Missing '='")
+			}
+		} else {
+			fmt.Println("A var declaration must specify the type.")
+		}
+	} else {
+		fmt.Println("A var declaration must have a identifier.")
+	}
+	return nil
 }
 
 func (p *Parser) create_binary_op(tts []lexer.TokenType, precedent_function func() Expression) Expression {

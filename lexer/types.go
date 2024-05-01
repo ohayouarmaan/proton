@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/ohayouarmaan/proton/helpers"
@@ -23,6 +22,7 @@ const (
 	Return  TokenType = "return"
 	True    TokenType = "true"
 	False   TokenType = "false"
+	Dec     TokenType = "dec"
 
 	Identifier TokenType = "identifier"
 	// Scope Identifiers
@@ -62,7 +62,9 @@ const (
 var KEYWORDS map[string]TokenType = map[string]TokenType{
 	"proc":   Process,
 	"int":    Integer,
+	"string": String,
 	"return": Return,
+	"dec":    Dec,
 }
 
 type Token struct {
@@ -128,6 +130,9 @@ func (l *Lexer) build_string() Token {
 		}
 		built_string += string(l.Source_Code[l.Current_Idx])
 		l.Current_Idx += 1
+		if l.Current_Idx >= len(l.Source_Code) {
+			break
+		}
 		if string(l.Source_Code[l.Current_Idx]) == string('"') {
 			break
 		}
@@ -210,6 +215,8 @@ func (l *Lexer) Generate_Tokens() {
 			l.build_token(SemiColon, ";")
 		} else if current_character == "." {
 			l.build_token(Dot, ".")
+		} else if current_character == "=" {
+			l.build_token(EqualTo, ".")
 
 		} else if current_character == "+" {
 			l.build_token(Plus, "+")
@@ -240,5 +247,4 @@ func (l *Lexer) Generate_Tokens() {
 		Meta_data: nil,
 		Lexeme:    "EOF",
 	})
-	fmt.Println(l.Tokens)
 }
