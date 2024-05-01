@@ -1,2 +1,3 @@
 dec x int = -2 * 7 + 5;
 dec y string = "Hello, World";
+print x + y;

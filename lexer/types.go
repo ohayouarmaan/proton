@@ -23,6 +23,7 @@ const (
 	True    TokenType = "true"
 	False   TokenType = "false"
 	Dec     TokenType = "dec"
+	Print   TokenType = "print"
 
 	Identifier TokenType = "identifier"
 	// Scope Identifiers
@@ -65,6 +66,7 @@ var KEYWORDS map[string]TokenType = map[string]TokenType{
 	"string": String,
 	"return": Return,
 	"dec":    Dec,
+	"print":  Print,
 }
 
 type Token struct {
@@ -91,12 +93,12 @@ func New(source_code string) Lexer {
 	}
 }
 
-func getKeywordToken(lexeme string) TokenType {
+func getKeywordToken(lexeme string) (TokenType, bool) {
 	if KEYWORDS[lexeme] != "" {
-		return KEYWORDS[lexeme]
+		return KEYWORDS[lexeme], false
 
 	}
-	return Identifier
+	return Identifier, true
 }
 
 func (l *Lexer) build_keyword() Token {
@@ -106,13 +108,27 @@ func (l *Lexer) build_keyword() Token {
 		built_string += string(l.Source_Code[l.Current_Idx])
 		l.Current_Idx += 1
 	}
-	tt := getKeywordToken(built_string)
+	tt, is_identifier := getKeywordToken(built_string)
+	if !is_identifier {
+		return Token{
+			TokenType: tt,
+			start:     start,
+			Meta_data: nil,
+			Lexeme:    built_string,
+			end:       l.Current_Idx,
+		}
+	}
 	return Token{
 		TokenType: tt,
 		start:     start,
-		Meta_data: nil,
-		Lexeme:    built_string,
-		end:       l.Current_Idx,
+		Meta_data: &struct{ Value Literal_Value }{
+			Value: Literal_Value{
+				Value: built_string,
+				Type:  string(Identifier),
+			},
+		},
+		Lexeme: built_string,
+		end:    l.Current_Idx,
 	}
 }
 

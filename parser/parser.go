@@ -32,6 +32,10 @@ type VarDeclarationStatement struct {
 	Value Expression
 }
 
+type PrintStatement struct {
+	Value Expression
+}
+
 type BinaryOp struct {
 	lhs      Expression
 	operator string
@@ -55,8 +59,12 @@ func (p *Parser) Parse() Expression {
 func (p *Parser) ParseProgram() []Statement {
 	stmts := []Statement{}
 	for p.Tokens[p.Current_Idx].TokenType != lexer.EOF {
-		stmt := *p.parse_stmt()
-		stmts = append(stmts, stmt)
+		stmt := p.parse_stmt()
+		if stmt != nil {
+			stmts = append(stmts, *stmt)
+		} else {
+			fmt.Println("currentToken: ", p.Tokens[p.Current_Idx])
+		}
 	}
 	return stmts
 }
@@ -65,8 +73,27 @@ func (p *Parser) parse_stmt() *Statement {
 	if p.Tokens[p.Current_Idx].TokenType == lexer.Dec {
 		p.Current_Idx += 1
 		return p.parse_var_dec_stmt()
+	} else if p.Tokens[p.Current_Idx].TokenType == lexer.Print {
+		fmt.Println("Parsing print statement")
+		p.Current_Idx += 1
+		return p.parse_print_stmt()
+	}
+	return nil
+}
+
+func (p *Parser) parse_print_stmt() *Statement {
+	value := p.Parse_binop()
+	if p.Tokens[p.Current_Idx].TokenType == lexer.SemiColon {
+		p.Current_Idx += 1
+		generated_stmt := Statement{
+			Value: PrintStatement{
+				Value: value,
+			},
+			Type: "PrintStmt",
+		}
+		return &generated_stmt
 	} else {
-		fmt.Println("A var declaration must have a dec keyword.")
+		fmt.Println("Expected a ';'")
 	}
 	return nil
 }
@@ -148,6 +175,7 @@ func (p *Parser) parse_unary() Expression {
 
 func (p *Parser) parse_primary() Expression {
 	if p.Tokens[p.Current_Idx].Meta_data != nil {
+
 		p.Current_Idx += 1
 		return Expression{
 			Value: p.Tokens[p.Current_Idx-1].Meta_data.Value,
