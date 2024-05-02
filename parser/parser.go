@@ -6,7 +6,6 @@ package parser
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/ohayouarmaan/proton/lexer"
 )
@@ -83,54 +82,50 @@ func (p *Parser) parse_stmt() *Statement {
 
 func (p *Parser) parse_print_stmt() *Statement {
 	value := p.Parse_binop()
-	if p.Tokens[p.Current_Idx].TokenType == lexer.SemiColon {
-		p.Current_Idx += 1
-		generated_stmt := Statement{
-			Value: PrintStatement{
-				Value: value,
-			},
-			Type: "PrintStmt",
-		}
-		return &generated_stmt
-	} else {
-		fmt.Println("Expected a ';'")
+	p.consume(lexer.SemiColon, "Expected a ';' after a print statement.")
+	generated_stmt := Statement{
+		Value: PrintStatement{
+			Value: value,
+		},
+		Type: "PrintStmt",
 	}
-	return nil
+	return &generated_stmt
 }
 
 func (p *Parser) parse_var_dec_stmt() *Statement {
-	if p.Tokens[p.Current_Idx].TokenType == lexer.Identifier {
-		new_var_name := p.Tokens[p.Current_Idx].Lexeme
-		p.Current_Idx += 1
-		fmt.Println(p.Tokens[p.Current_Idx].TokenType)
-		if x := ([]lexer.TokenType{lexer.Integer, lexer.String}); slices.Contains(x, p.Tokens[p.Current_Idx].TokenType) {
-			new_var_type := p.Tokens[p.Current_Idx]
-			p.Current_Idx += 1
-			if p.Tokens[p.Current_Idx].TokenType == lexer.EqualTo {
-				p.Current_Idx += 1
-				value := p.Parse_binop()
-				if p.Tokens[p.Current_Idx].TokenType == lexer.SemiColon {
-					p.Current_Idx += 1
-					generated_stmt := Statement{
-						Value: VarDeclarationStatement{
-							Name:  new_var_name,
-							Type:  new_var_type.TokenType,
-							Value: value,
-						},
-						Type: "VarDec",
-					}
-					return &generated_stmt
-				} else {
-					fmt.Println("Missing ';'")
+	if p.consume(lexer.Identifier, "Expected an Identifier") {
+		new_var_name := p.previous_token()
+		if p.match_tokens([]lexer.TokenType{lexer.Integer, lexer.String}) {
+			new_var_type := p.previous_token_type()
+			if p.match_tokens([]lexer.TokenType{lexer.EqualTo, lexer.String}) {
+				new_var_value := p.Parse_binop()
+				p.consume(lexer.SemiColon, "Expected a ';' after a variable assignment.")
+				return &Statement{
+					Value: VarDeclarationStatement{
+						Name:  new_var_name.Lexeme,
+						Type:  new_var_type,
+						Value: new_var_value,
+					},
+					Type: "VariableDeclaration",
 				}
 			} else {
-				fmt.Println("Missing '='")
+				p.consume(lexer.SemiColon, "Expected a ';' after a variable declaration.")
+				return &Statement{
+					Value: VarDeclarationStatement{
+						Name: new_var_name.Lexeme,
+						Type: new_var_type,
+						Value: Expression{
+							Value: lexer.Literal_Value{
+								Value: nil,
+								Type:  "Nil",
+							},
+							Type: "LiteralValue",
+						},
+					},
+					Type: "VariableDeclaration",
+				}
 			}
-		} else {
-			fmt.Println("A var declaration must specify the type.")
 		}
-	} else {
-		fmt.Println("A var declaration must have a identifier.")
 	}
 	return nil
 }
@@ -138,7 +133,7 @@ func (p *Parser) parse_var_dec_stmt() *Statement {
 func (p *Parser) create_binary_op(tts []lexer.TokenType, precedent_function func() Expression) Expression {
 	expr := precedent_function()
 	for p.match_tokens(tts) {
-		operator_type := p.previous_tokens()
+		operator_type := p.previous_token_type()
 		rhs := precedent_function()
 		expr = Expression{
 			Value: BinaryOp{
@@ -161,7 +156,7 @@ func (p *Parser) parse_factor() Expression {
 
 func (p *Parser) parse_unary() Expression {
 	if p.match_tokens([]lexer.TokenType{lexer.NotUnary, lexer.Minus}) {
-		operator := p.previous_tokens()
+		operator := p.previous_token_type()
 		return Expression{
 			Value: UnaryOp{
 				operator: operator,
@@ -195,6 +190,22 @@ func (p *Parser) match_tokens(tts []lexer.TokenType) bool {
 	return false
 }
 
-func (p *Parser) previous_tokens() lexer.TokenType {
+func (p *Parser) previous_token_type() lexer.TokenType {
 	return p.Tokens[p.Current_Idx-1].TokenType
+}
+
+func (p *Parser) previous_token() lexer.Token {
+	return p.Tokens[p.Current_Idx-1]
+}
+
+func (p *Parser) consume(expected_type lexer.TokenType, error_message string) bool {
+	if p.Tokens[p.Current_Idx].TokenType == expected_type {
+		p.Current_Idx += 1
+		return true
+	}
+	panic(error_message)
+}
+
+func (p *Parser) get_current_token() lexer.Token {
+	return p.Tokens[p.Current_Idx]
 }
