@@ -2,9 +2,9 @@ package runner
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
+	"github.com/ohayouarmaan/proton/compiler/positron"
 	"github.com/ohayouarmaan/proton/lexer"
 	"github.com/ohayouarmaan/proton/parser"
 )
@@ -24,11 +24,12 @@ func (r *Runner) Load_program(file_name string) error {
 	r.Code = string(file)
 	lexer := lexer.New(r.Code)
 	lexer.Generate_Tokens()
-	fmt.Println(lexer.Tokens)
 	p := parser.Parser{
 		Tokens:      lexer.Tokens,
 		Current_Idx: 0,
 	}
-	fmt.Println("parsed: ", p.ParseProgram())
+	first_statement := p.ParseProgram()[0]
+	po := positron.Positron{}
+	po.Visit_statement(first_statement)
 	return nil
 }

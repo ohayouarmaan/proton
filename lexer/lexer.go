@@ -43,6 +43,7 @@ const (
 	Minus    TokenType = "-"
 	Multiply TokenType = "*"
 	Divide   TokenType = "/"
+	Modulo   TokenType = "%"
 
 	// Comparison Operator
 	EqualTo          TokenType = "=="
@@ -80,14 +81,16 @@ type Token struct {
 	Meta_data *struct {
 		Value Literal_Value
 	}
+	Line  int
 	start int
 	end   int
 }
 
 type Lexer struct {
-	Source_Code string
-	Tokens      []Token
-	Current_Idx int
+	Source_Code  string
+	current_line int
+	Tokens       []Token
+	Current_Idx  int
 }
 
 func New(source_code string) Lexer {
@@ -120,6 +123,7 @@ func (l *Lexer) build_keyword() Token {
 			start:     start,
 			Meta_data: nil,
 			Lexeme:    built_string,
+			Line:      l.current_line,
 			end:       l.Current_Idx,
 		}
 	}
@@ -132,6 +136,7 @@ func (l *Lexer) build_keyword() Token {
 				Type:  string(Identifier),
 			},
 		},
+		Line:   l.current_line,
 		Lexeme: built_string,
 		end:    l.Current_Idx,
 	}
@@ -165,7 +170,8 @@ func (l *Lexer) build_string() Token {
 		Meta_data: &struct{ Value Literal_Value }{
 			Value: Literal_Value{Value: built_string, Type: "string"},
 		},
-		end: l.Current_Idx,
+		Line: l.current_line,
+		end:  l.Current_Idx,
 	}
 }
 
@@ -175,6 +181,7 @@ func (l *Lexer) build_token(t TokenType, lexeme string) {
 		Lexeme:    lexeme,
 		start:     l.Current_Idx,
 		Meta_data: nil,
+		Line:      l.current_line,
 		end:       l.Current_Idx + 1,
 	})
 	l.Current_Idx += 1
@@ -207,7 +214,8 @@ func (l *Lexer) build_numbers() Token {
 			Meta_data: &struct{ Value Literal_Value }{
 				Value: Literal_Value{Value: value, Type: "number"},
 			},
-			end: l.Current_Idx,
+			Line: l.current_line,
+			end:  l.Current_Idx,
 		}
 	}
 	panic("illegal float value found.")
@@ -215,15 +223,18 @@ func (l *Lexer) build_numbers() Token {
 
 func (l *Lexer) Generate_Tokens() {
 	l.Current_Idx = 0
+	l.current_line = 0
 	for l.Current_Idx >= 0 && l.Current_Idx < len(l.Source_Code) {
 		current_character := string(l.Source_Code[l.Current_Idx])
 		// if helpers.IsAlphaNumeric(current_character) {
 		// 	str := l.build_string()
 		// 	fmt.Println("string: ", str)
 		// }
-		if current_character == " " || current_character == "\n" || current_character == "\t" {
+		if current_character == " " || current_character == "\t" {
 			l.Current_Idx += 1
 			continue
+		} else if current_character == "\n" {
+			l.current_line += 1
 		} else if current_character == "(" {
 			l.build_token(LParen, "(")
 		} else if current_character == ")" {
@@ -251,6 +262,8 @@ func (l *Lexer) Generate_Tokens() {
 			l.build_token(NotUnary, "!")
 		} else if current_character == "~" {
 			l.build_token(BitWiseNotUnary, "~")
+		} else if current_character == "%" {
+			l.build_token(Modulo, "%")
 
 		} else if current_character == "\"" {
 			l.Tokens = append(l.Tokens, l.build_string())

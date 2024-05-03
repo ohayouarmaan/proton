@@ -17,6 +17,7 @@ type Parser struct {
 
 type Expression struct {
 	Value interface{}
+	Line  int
 	Type  string
 }
 
@@ -36,9 +37,9 @@ type PrintStatement struct {
 }
 
 type BinaryOp struct {
-	lhs      Expression
-	operator string
-	rhs      Expression
+	Lhs      Expression
+	Operator string
+	Rhs      Expression
 }
 
 type Block struct {
@@ -46,8 +47,8 @@ type Block struct {
 }
 
 type UnaryOp struct {
-	operator lexer.TokenType
-	rhs      Expression
+	Operator lexer.TokenType
+	Rhs      Expression
 }
 
 func (p *Parser) ParseProgram() []Statement {
@@ -79,7 +80,6 @@ func (p *Parser) parse_stmt() *Statement {
 			Type: "BlockStatement",
 		}
 	} else if p.Tokens[p.Current_Idx].TokenType == lexer.Print {
-		fmt.Println("Parsing print statement")
 		p.Current_Idx += 1
 		return p.parse_print_stmt()
 	}
@@ -126,6 +126,7 @@ func (p *Parser) parse_var_dec_stmt() *Statement {
 								Type:  "Nil",
 							},
 							Type: "LiteralValue",
+							Line: p.get_current_token().Line,
 						},
 					},
 					Type: "VariableDeclaration",
@@ -143,11 +144,12 @@ func (p *Parser) create_binary_op(tts []lexer.TokenType, precedent_function func
 		rhs := precedent_function()
 		expr = Expression{
 			Value: BinaryOp{
-				lhs:      expr,
-				operator: string(operator_type),
-				rhs:      rhs,
+				Lhs:      expr,
+				Operator: string(operator_type),
+				Rhs:      rhs,
 			},
-			Type: "BinaryOp",
+			Line: p.get_current_token().Line,
+			Type: "BinaryExp",
 		}
 	}
 	return expr
@@ -157,7 +159,7 @@ func (p *Parser) Parse_binop() Expression {
 }
 
 func (p *Parser) parse_factor() Expression {
-	return p.create_binary_op([]lexer.TokenType{lexer.Divide, lexer.Multiply}, p.parse_unary)
+	return p.create_binary_op([]lexer.TokenType{lexer.Divide, lexer.Multiply, lexer.Modulo}, p.parse_unary)
 }
 
 func (p *Parser) parse_unary() Expression {
@@ -165,9 +167,10 @@ func (p *Parser) parse_unary() Expression {
 		operator := p.previous_token_type()
 		return Expression{
 			Value: UnaryOp{
-				operator: operator,
-				rhs:      p.parse_unary(),
+				Operator: operator,
+				Rhs:      p.parse_unary(),
 			},
+			Line: p.get_current_token().Line,
 			Type: "UnaryExp",
 		}
 	}
@@ -175,11 +178,16 @@ func (p *Parser) parse_unary() Expression {
 }
 
 func (p *Parser) parse_primary() Expression {
+	if p.match_tokens([]lexer.TokenType{lexer.LParen}) {
+		value := p.Parse_binop()
+		p.consume(lexer.RParen, "You better close the '(' >:(")
+		return value
+	}
 	if p.get_current_token().Meta_data != nil {
-
 		p.Current_Idx += 1
 		return Expression{
 			Value: p.Tokens[p.Current_Idx-1].Meta_data.Value,
+			Line:  p.Tokens[p.Current_Idx-1].Line,
 			Type:  "LiteralValue",
 		}
 	}
