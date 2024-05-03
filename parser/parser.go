@@ -41,23 +41,18 @@ type BinaryOp struct {
 	rhs      Expression
 }
 
+type Block struct {
+	statements []Statement
+}
+
 type UnaryOp struct {
 	operator lexer.TokenType
 	rhs      Expression
 }
 
-func (p *Parser) Parse() Expression {
-	if p.Tokens[p.Current_Idx].TokenType == lexer.Num {
-		if p.Tokens[p.Current_Idx+1].TokenType == lexer.Plus {
-			return p.Parse_binop()
-		}
-	}
-	return Expression{}
-}
-
 func (p *Parser) ParseProgram() []Statement {
 	stmts := []Statement{}
-	for p.Tokens[p.Current_Idx].TokenType != lexer.EOF {
+	for !p.match_tokens([]lexer.TokenType{lexer.EOF}) {
 		stmt := p.parse_stmt()
 		if stmt != nil {
 			stmts = append(stmts, *stmt)
@@ -69,9 +64,20 @@ func (p *Parser) ParseProgram() []Statement {
 }
 
 func (p *Parser) parse_stmt() *Statement {
-	if p.Tokens[p.Current_Idx].TokenType == lexer.Dec {
+	if p.get_current_token().TokenType == lexer.Dec {
 		p.Current_Idx += 1
 		return p.parse_var_dec_stmt()
+	} else if p.match_tokens([]lexer.TokenType{lexer.LBrace}) {
+		stmts := []Statement{}
+		for !p.match_tokens([]lexer.TokenType{lexer.RBrace}) {
+			stmts = append(stmts, *p.parse_stmt())
+		}
+		return &Statement{
+			Value: Block{
+				statements: stmts,
+			},
+			Type: "BlockStatement",
+		}
 	} else if p.Tokens[p.Current_Idx].TokenType == lexer.Print {
 		fmt.Println("Parsing print statement")
 		p.Current_Idx += 1
@@ -169,7 +175,7 @@ func (p *Parser) parse_unary() Expression {
 }
 
 func (p *Parser) parse_primary() Expression {
-	if p.Tokens[p.Current_Idx].Meta_data != nil {
+	if p.get_current_token().Meta_data != nil {
 
 		p.Current_Idx += 1
 		return Expression{
@@ -182,7 +188,7 @@ func (p *Parser) parse_primary() Expression {
 
 func (p *Parser) match_tokens(tts []lexer.TokenType) bool {
 	for _, tt := range tts {
-		if p.Tokens[p.Current_Idx].TokenType == tt {
+		if p.get_current_token().TokenType == tt {
 			p.Current_Idx += 1
 			return true
 		}
@@ -199,7 +205,7 @@ func (p *Parser) previous_token() lexer.Token {
 }
 
 func (p *Parser) consume(expected_type lexer.TokenType, error_message string) bool {
-	if p.Tokens[p.Current_Idx].TokenType == expected_type {
+	if p.get_current_token().TokenType == expected_type {
 		p.Current_Idx += 1
 		return true
 	}

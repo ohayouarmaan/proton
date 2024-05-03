@@ -16,12 +16,7 @@ type Literal_Value struct {
 const (
 	// Reserved Keywords
 	Process TokenType = "proc"
-	Integer TokenType = "int"
-	String  TokenType = "string"
-	Boolean TokenType = "bool"
 	Return  TokenType = "return"
-	True    TokenType = "true"
-	False   TokenType = "false"
 	Dec     TokenType = "dec"
 	Print   TokenType = "print"
 
@@ -34,8 +29,14 @@ const (
 	RBrace    TokenType = "}"
 
 	// Datatypes
-	Str TokenType = "string"
-	Num TokenType = "number"
+	Str     TokenType = "str"
+	Num     TokenType = "number"
+	Integer TokenType = "int"
+	String  TokenType = "string"
+	Boolean TokenType = "bool"
+	True    TokenType = "true"
+	False   TokenType = "false"
+	Nil     TokenType = "nil"
 
 	// Binary Operators
 	Plus     TokenType = "+"
@@ -64,9 +65,13 @@ var KEYWORDS map[string]TokenType = map[string]TokenType{
 	"proc":   Process,
 	"int":    Integer,
 	"string": String,
+	"str":    Str,
 	"return": Return,
 	"dec":    Dec,
 	"print":  Print,
+	"nil":    Nil,
+	"true":   True,
+	"false":  False,
 }
 
 type Token struct {
