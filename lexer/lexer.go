@@ -112,7 +112,7 @@ func getKeywordToken(lexeme string) (TokenType, bool) {
 func (l *Lexer) build_keyword() Token {
 	built_string := ""
 	start := l.Current_Idx
-	for helpers.IsAlphaNumeric(string(l.Source_Code[l.Current_Idx])) {
+	for l.Current_Idx < len(l.Source_Code) && helpers.IsAlphaNumeric(string(l.Source_Code[l.Current_Idx])) {
 		built_string += string(l.Source_Code[l.Current_Idx])
 		l.Current_Idx += 1
 	}
@@ -235,6 +235,8 @@ func (l *Lexer) Generate_Tokens() {
 			continue
 		} else if current_character == "\n" {
 			l.current_line += 1
+			l.Current_Idx += 1
+			continue
 		} else if current_character == "(" {
 			l.build_token(LParen, "(")
 		} else if current_character == ")" {

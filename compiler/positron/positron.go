@@ -1,6 +1,7 @@
 /////////////////////////////////////////////////////////////////////////
 // WIP-----------------
-// POSITRON:Virtual machine (emulates coulomb assembly)
+// POSITRON: Virtual machine (emulates coulomb assembly)
+// POSITRON: Will also be able to interpret proton
 /////////////////////////////////////////////////////////////////////////
 
 package positron
@@ -27,7 +28,6 @@ func (p *Positron) visit_expression(node parser.Expression) lexer.Literal_Value 
 	if node.Type == "BinaryExp" {
 		return p.visit_bin_expression(node)
 	} else if node.Type == "UnaryExp" {
-		panic("UNIMPLEMENTED")
 		p.visit_unary_expression(node)
 	} else if node.Type == "LiteralValue" {
 		return p.visit_literal_expression(node)
@@ -42,7 +42,7 @@ func (p *Positron) Visit_statement(node parser.Statement) {
 }
 
 func (p *Positron) visit_bin_expression(node parser.Expression) lexer.Literal_Value {
-	if val, ok := node.Value.(parser.BinaryOp); ok == true {
+	if val, ok := node.Value.(parser.BinaryOp); ok {
 		lhs := val.Lhs
 		operator := val.Operator
 		rhs := val.Rhs
@@ -82,17 +82,13 @@ func (p *Positron) visit_bin_expression(node parser.Expression) lexer.Literal_Va
 			} else {
 				panic("operator 'a' can not be a float in the modulo operator. in line: " + strconv.Itoa(node.Line))
 			}
-			// return lexer.Literal_Value{
-			// 	Value: lhs_parsed.Value.(int64) % rhs_parsed.Value.(int64),
-			// 	Type:  "number",
-			// }
 		}
 	}
 	panic("UNIMPLEMENTED")
 }
 
 func (p *Positron) visit_unary_expression(node parser.Expression) lexer.Literal_Value {
-	if value, ok := node.Value.(parser.UnaryOp); ok == true {
+	if value, ok := node.Value.(parser.UnaryOp); ok {
 		if value.Operator == "-" {
 			exp := p.visit_expression(value.Rhs)
 			return lexer.Literal_Value{
@@ -105,7 +101,7 @@ func (p *Positron) visit_unary_expression(node parser.Expression) lexer.Literal_
 }
 
 func (p *Positron) visit_literal_expression(node parser.Expression) lexer.Literal_Value {
-	if val, ok := node.Value.(lexer.Literal_Value); ok == true {
+	if val, ok := node.Value.(lexer.Literal_Value); ok {
 		return val
 	}
 	panic("INVALID LITERAL VALUE")

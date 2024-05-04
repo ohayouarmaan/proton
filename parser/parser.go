@@ -6,6 +6,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/ohayouarmaan/proton/lexer"
 )
@@ -13,6 +14,7 @@ import (
 type Parser struct {
 	Tokens      []lexer.Token
 	Current_Idx int
+	File_Name   string
 }
 
 type Expression struct {
@@ -36,14 +38,14 @@ type PrintStatement struct {
 	Value Expression
 }
 
+type Block struct {
+	statements []Statement
+}
+
 type BinaryOp struct {
 	Lhs      Expression
 	Operator string
 	Rhs      Expression
-}
-
-type Block struct {
-	statements []Statement
 }
 
 type UnaryOp struct {
@@ -62,6 +64,10 @@ func (p *Parser) ParseProgram() []Statement {
 		}
 	}
 	return stmts
+}
+
+func (p *Parser) Load_File_Name(fn string) {
+	p.File_Name = fn
 }
 
 func (p *Parser) parse_stmt() *Statement {
@@ -132,6 +138,8 @@ func (p *Parser) parse_var_dec_stmt() *Statement {
 					Type: "VariableDeclaration",
 				}
 			}
+		} else {
+			panic("Expected a type definition after a variable identifier " + p.File_Name + ":line:" + strconv.Itoa(p.get_current_token().Line+1))
 		}
 	}
 	return nil
@@ -217,7 +225,7 @@ func (p *Parser) consume(expected_type lexer.TokenType, error_message string) bo
 		p.Current_Idx += 1
 		return true
 	}
-	panic(error_message)
+	panic(error_message + " " + p.File_Name + ":line:" + strconv.Itoa(p.get_current_token().Line+1))
 }
 
 func (p *Parser) get_current_token() lexer.Token {
