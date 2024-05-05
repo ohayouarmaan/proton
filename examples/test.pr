@@ -1,1 +1,3 @@
-dec x string;
+proc main(c string = "Hello, World", b string) {
+    print c + b;
+}

@@ -11,17 +11,25 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/ohayouarmaan/proton/compiler/positron/prototype"
 	"github.com/ohayouarmaan/proton/lexer"
 	"github.com/ohayouarmaan/proton/parser"
 )
 
 type Positron struct {
-	Pc    int
-	Stack []interface{}
+	Pc     int
+	Stack  []interface{}
+	Memory prototype.Prototype
 }
 
 func (p *Positron) Compile_to_coulomb(ast *[]parser.Statement) {
 
+}
+
+func (p *Positron) Visit_Program(prog []parser.Statement) {
+	for i := range prog {
+		p.visit_statement(prog[i])
+	}
 }
 
 func (p *Positron) visit_expression(node parser.Expression) lexer.Literal_Value {
@@ -35,10 +43,21 @@ func (p *Positron) visit_expression(node parser.Expression) lexer.Literal_Value 
 	panic("UNIMPLEMENTED")
 }
 
-func (p *Positron) Visit_statement(node parser.Statement) {
+func (p *Positron) visit_statement(node parser.Statement) {
 	if node.Type == "PrintStmt" {
-		fmt.Println(p.visit_expression(node.Value.(parser.PrintStatement).Value).Value)
+		p.visit_print_statement(node)
+	} else if node.Type == "VariableDeclaration" {
+		p.visit_variable_declaration(node)
 	}
+}
+
+func (p *Positron) visit_print_statement(node parser.Statement) {
+	fmt.Println(p.visit_expression(node.Value.(parser.PrintStatement).Value).Value)
+}
+
+func (p *Positron) visit_variable_declaration(node parser.Statement) {
+	stmt := node.Value.(parser.VarDeclarationStatement)
+	p.Memory.Set(stmt.Name, p.visit_expression(stmt.Value))
 }
 
 func (p *Positron) visit_bin_expression(node parser.Expression) lexer.Literal_Value {
@@ -102,6 +121,13 @@ func (p *Positron) visit_unary_expression(node parser.Expression) lexer.Literal_
 
 func (p *Positron) visit_literal_expression(node parser.Expression) lexer.Literal_Value {
 	if val, ok := node.Value.(lexer.Literal_Value); ok {
+		if val.Type == "identifier" {
+			if og_val := (p.Memory.Look(val.Value.(string))); og_val != nil {
+				return *og_val
+			} else {
+				panic("Variable x not defined in line: " + strconv.Itoa(node.Line))
+			}
+		}
 		return val
 	}
 	panic("INVALID LITERAL VALUE")

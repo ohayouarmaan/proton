@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ohayouarmaan/proton/compiler/positron"
 	"github.com/ohayouarmaan/proton/lexer"
 	"github.com/ohayouarmaan/proton/parser"
 )
@@ -23,16 +22,19 @@ func (r *Runner) Load_program(file_name string) error {
 	}
 
 	r.Code = string(file)
-	lexer := lexer.New(r.Code)
-	lexer.Generate_Tokens()
+	l := lexer.New(r.Code)
+	l.Generate_Tokens()
 	p := parser.Parser{
-		Tokens:      lexer.Tokens,
+		Tokens:      l.Tokens,
 		Current_Idx: 0,
 	}
 	p.Load_File_Name(r.File_name)
-	fmt.Println(lexer.Tokens)
-	first_statement := (p.ParseProgram())[0]
-	po := positron.Positron{}
-	po.Visit_statement(first_statement)
+	// fmt.Println(l.Tokens)
+
+	program := p.ParseProgram()
+	fmt.Println(program)
+	// po := positron.Positron{}
+	// po.Memory = prototype.New()
+	// po.Visit_Program(program)
 	return nil
 }

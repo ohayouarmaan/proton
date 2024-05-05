@@ -42,6 +42,16 @@ type Block struct {
 	statements []Statement
 }
 
+type FunctionArgument struct {
+	Type         lexer.Token
+	DefaultValue lexer.Literal_Value
+}
+type FunctionStatement struct {
+	Name          string
+	Arguments     map[string]FunctionArgument
+	FunctionBlock Block
+}
+
 type BinaryOp struct {
 	Lhs      Expression
 	Operator string
@@ -59,8 +69,6 @@ func (p *Parser) ParseProgram() []Statement {
 		stmt := p.parse_stmt()
 		if stmt != nil {
 			stmts = append(stmts, *stmt)
-		} else {
-			fmt.Println("currentToken: ", p.Tokens[p.Current_Idx])
 		}
 	}
 	return stmts
@@ -75,21 +83,27 @@ func (p *Parser) parse_stmt() *Statement {
 		p.Current_Idx += 1
 		return p.parse_var_dec_stmt()
 	} else if p.match_tokens([]lexer.TokenType{lexer.LBrace}) {
-		stmts := []Statement{}
-		for !p.match_tokens([]lexer.TokenType{lexer.RBrace}) {
-			stmts = append(stmts, *p.parse_stmt())
-		}
-		return &Statement{
-			Value: Block{
-				statements: stmts,
-			},
-			Type: "BlockStatement",
-		}
+		return p.parse_block_stmt()
 	} else if p.Tokens[p.Current_Idx].TokenType == lexer.Print {
 		p.Current_Idx += 1
 		return p.parse_print_stmt()
+	} else if p.match_tokens([]lexer.TokenType{lexer.Process}) {
+		return p.parse_function_statement()
 	}
 	return nil
+}
+
+func (p *Parser) parse_block_stmt() *Statement {
+	stmts := []Statement{}
+	for !p.match_tokens([]lexer.TokenType{lexer.RBrace}) {
+		stmts = append(stmts, *p.parse_stmt())
+	}
+	return &Statement{
+		Value: Block{
+			statements: stmts,
+		},
+		Type: "BlockStatement",
+	}
 }
 
 func (p *Parser) parse_print_stmt() *Statement {
@@ -107,7 +121,7 @@ func (p *Parser) parse_print_stmt() *Statement {
 func (p *Parser) parse_var_dec_stmt() *Statement {
 	if p.consume(lexer.Identifier, "Expected an Identifier") {
 		new_var_name := p.previous_token()
-		if p.match_tokens([]lexer.TokenType{lexer.Integer, lexer.String}) {
+		if p.match_tokens([]lexer.TokenType{lexer.Num, lexer.String}) {
 			new_var_type := p.previous_token_type()
 			if p.match_tokens([]lexer.TokenType{lexer.EqualTo, lexer.String}) {
 				new_var_value := p.Parse_binop()
@@ -143,6 +157,59 @@ func (p *Parser) parse_var_dec_stmt() *Statement {
 		}
 	}
 	return nil
+}
+
+func (p *Parser) parse_function_statement() *Statement {
+	p.consume(lexer.Identifier, "Expected a identifier after proc keyword")
+	fn_name := p.previous_token()
+	p.consume(lexer.LParen, "Expected a '(' after function identifier")
+	args := make(map[string]FunctionArgument)
+	for p.match_tokens([]lexer.TokenType{lexer.Identifier}) {
+		fmt.Println("HI: ", p.get_current_token())
+		arg_name := p.previous_token()
+		// Make it generic to have any type instead of hardcoding types.
+		// Using the above technique we will be able to have user defined types as well.
+		if p.match_tokens([]lexer.TokenType{lexer.Num, lexer.String}) {
+			arg_type := p.previous_token()
+			fmt.Println("Wwow", arg_type)
+			if p.match_tokens([]lexer.TokenType{lexer.EqualTo}) {
+				if p.match_tokens([]lexer.TokenType{lexer.Num, lexer.Str}) {
+					arg_default_value := p.previous_token()
+					args[arg_name.Lexeme] = FunctionArgument{
+						Type: arg_type,
+						DefaultValue: lexer.Literal_Value{
+							Value: arg_default_value,
+							Type:  string(arg_default_value.TokenType),
+						},
+					}
+				}
+			} else {
+				args[arg_name.Lexeme] = FunctionArgument{
+					Type: arg_type,
+					DefaultValue: lexer.Literal_Value{
+						Value: nil,
+						Type:  "Nil",
+					},
+				}
+			}
+		} else {
+			panic("You must add argument type in your function's arguments " + p.File_Name + ":line:" + strconv.Itoa(p.get_current_token().Line))
+		}
+		if p.match_tokens([]lexer.TokenType{lexer.Comma}) {
+			continue
+		} else {
+			p.consume(lexer.RParen, "Missing a closing ')'")
+		}
+	}
+	p.consume(lexer.LBrace, "Expected a '{' after your arguments")
+	block_stmt := p.parse_block_stmt().Value.(Block)
+	return &Statement{
+		Value: FunctionStatement{
+			Name:          fn_name.Lexeme,
+			Arguments:     args,
+			FunctionBlock: block_stmt,
+		},
+	}
 }
 
 func (p *Parser) create_binary_op(tts []lexer.TokenType, precedent_function func() Expression) Expression {

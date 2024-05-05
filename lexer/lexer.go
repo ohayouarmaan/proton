@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/ohayouarmaan/proton/helpers"
@@ -15,18 +16,20 @@ type Literal_Value struct {
 
 const (
 	// Reserved Keywords
-	Process TokenType = "proc"
-	Return  TokenType = "return"
-	Dec     TokenType = "dec"
-	Print   TokenType = "print"
-
+	Process    TokenType = "proc"
+	Return     TokenType = "return"
+	Dec        TokenType = "dec"
+	Print      TokenType = "print"
 	Identifier TokenType = "identifier"
+
 	// Scope Identifiers
 	LParen    TokenType = "("
 	RParen    TokenType = ")"
 	SemiColon TokenType = ";"
+	Colon     TokenType = ":"
 	LBrace    TokenType = "{"
 	RBrace    TokenType = "}"
+	Comma     TokenType = ","
 
 	// Datatypes
 	Str     TokenType = "str"
@@ -58,13 +61,12 @@ const (
 	Pointer         TokenType = "&"
 
 	Dot TokenType = "."
-
 	EOF TokenType = "EOF"
 )
 
 var KEYWORDS map[string]TokenType = map[string]TokenType{
 	"proc":   Process,
-	"int":    Integer,
+	"num":    Num,
 	"string": String,
 	"str":    Str,
 	"return": Return,
@@ -116,6 +118,7 @@ func (l *Lexer) build_keyword() Token {
 		built_string += string(l.Source_Code[l.Current_Idx])
 		l.Current_Idx += 1
 	}
+	fmt.Println(string(l.Source_Code[l.Current_Idx]))
 	tt, is_identifier := getKeywordToken(built_string)
 	if !is_identifier {
 		return Token{
@@ -250,7 +253,11 @@ func (l *Lexer) Generate_Tokens() {
 		} else if current_character == "." {
 			l.build_token(Dot, ".")
 		} else if current_character == "=" {
-			l.build_token(EqualTo, ".")
+			l.build_token(EqualTo, "=")
+		} else if current_character == ":" {
+			l.build_token(Colon, ":")
+		} else if current_character == "," {
+			l.build_token(Comma, ",")
 
 		} else if current_character == "+" {
 			l.build_token(Plus, "+")
